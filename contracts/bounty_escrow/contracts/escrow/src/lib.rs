@@ -4330,6 +4330,24 @@ impl BountyEscrowContract {
             .ok_or(Error::BountyNotFound)
     }
 
+    /// Build the context bytes that feed into the deterministic PRNG.
+    ///
+    /// The context binds selection to the current contract address, bounty
+    /// parameters, **ledger timestamp**, and the monotonic ticket counter.
+    /// Changing any of these inputs produces a completely different SHA-256
+    /// digest and therefore a different winner.
+    ///
+    /// # Ledger inputs included
+    /// - `env.ledger().timestamp()` — ties the result to the block that
+    ///   executes the transaction.
+    /// - `TicketCounter` — monotonically increasing; prevents two calls
+    ///   within the same ledger close from producing identical context.
+    ///
+    /// # Predictability limits
+    /// Because the ledger timestamp is known to validators before block
+    /// close, a validator-level adversary can predict the outcome for a
+    /// given external seed.  See `DETERMINISTIC_RANDOMNESS.md` for the
+    /// full threat model.
     fn build_claim_selection_context(
         env: &Env,
         bounty_id: u64,
@@ -4357,7 +4375,20 @@ impl BountyEscrowContract {
     /// Deterministically derive the winner index for claim ticket issuance.
     ///
     /// This is a pure/view helper that lets clients verify expected results
-    /// before issuing a ticket.
+    /// before issuing a ticket.  The index is computed via per-candidate
+    /// SHA-256 scoring (see `grainlify_core::pseudo_randomness`), making
+    /// the result **order-independent** — shuffling `candidates` does not
+    /// change which address is selected.
+    ///
+    /// # Arguments
+    /// * `bounty_id` — Bounty whose context seeds the PRNG.
+    /// * `candidates` — Non-empty list of eligible addresses.
+    /// * `amount` — Claim amount mixed into the context hash.
+    /// * `expires_at` — Ticket expiry mixed into the context hash.
+    /// * `external_seed` — Caller-provided 32-byte seed.
+    ///
+    /// # Errors
+    /// Returns `Error::InvalidSelectionInput` when `candidates` is empty.
     pub fn derive_claim_ticket_winner_index(
         env: Env,
         bounty_id: u64,
@@ -4382,7 +4413,14 @@ impl BountyEscrowContract {
         Ok(selection.index)
     }
 
-    /// Deterministically derive the winner address for claim ticket issuance.
+    /// Deterministically derive the winner **address** for claim ticket issuance.
+    ///
+    /// Convenience wrapper around [`Self::derive_claim_ticket_winner_index`]
+    /// that resolves the winning index back to an `Address`.
+    ///
+    /// # Errors
+    /// Returns `Error::InvalidSelectionInput` when `candidates` is empty or
+    /// the resolved index is out of bounds.
     pub fn derive_claim_ticket_winner(
         env: Env,
         bounty_id: u64,
@@ -4402,11 +4440,24 @@ impl BountyEscrowContract {
         candidates.get(index).ok_or(Error::InvalidSelectionInput)
     }
 
-    /// Deterministically select a winner from `candidates` and issue claim ticket.
+    /// Deterministically select a winner from `candidates` and issue a claim ticket.
     ///
-    /// Security notes:
-    /// - Deterministic and verifiable from published inputs.
-    /// - Not unbiased randomness; callers can still influence context/seed choices.
+    /// Combines [`Self::derive_claim_ticket_winner`] with
+    /// [`Self::issue_claim_ticket`] in a single atomic call.  Emits a
+    /// `DeterministicSelectionDerived` event containing the seed hash,
+    /// winner score, and selected index for off-chain auditability.
+    ///
+    /// # Security notes
+    /// - **Deterministic and verifiable** — any observer can replay the
+    ///   selection from the published event fields.
+    /// - **Not unbiased randomness** — callers who control both the
+    ///   external seed and submission timing can influence outcomes.
+    ///   See `DETERMINISTIC_RANDOMNESS.md` for mitigation guidance.
+    /// - The selection is **order-independent**: candidate list ordering
+    ///   does not affect which address wins.
+    ///
+    /// # Errors
+    /// Returns `Error::InvalidSelectionInput` when `candidates` is empty.
     pub fn issue_claim_ticket_deterministic(
         env: Env,
         bounty_id: u64,
