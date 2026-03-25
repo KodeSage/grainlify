@@ -368,7 +368,10 @@ fn test_get_admin_none_before_init() {
     let env = Env::default();
     let id = env.register_contract(None, GrainlifyContract);
     let client = GrainlifyContractClient::new(&env, &id);
-    assert!(client.get_admin().is_none(), "admin must be None before init");
+    assert!(
+        client.get_admin().is_none(),
+        "admin must be None before init"
+    );
 }
 
 /// `get_admin` returns the configured admin after `init_admin`.

@@ -155,7 +155,7 @@
 mod multisig;
 use multisig::{MultiSig, MultiSigConfig};
 use soroban_sdk::{
-    contract, contractimpl, contracterror, contracttype, symbol_short, Address, BytesN, Env,
+    contract, contracterror, contractimpl, contracttype, symbol_short, Address, BytesN, Env,
     String, Symbol, Vec,
 };
 pub mod asset;
@@ -1046,17 +1046,14 @@ impl GrainlifyContract {
             .expect("Missing upgrade proposal");
 
         // Store previous version for potential rollback
-        let current_version: u32 = env
-            .storage()
-            .instance()
-            .get(&DataKey::Version)
-            .unwrap_or(1);
+        let current_version: u32 = env.storage().instance().get(&DataKey::Version).unwrap_or(1);
         env.storage()
             .instance()
             .set(&DataKey::PreviousVersion, &current_version);
 
         // Perform WASM upgrade — instance storage is preserved
-        env.deployer().update_current_contract_wasm(wasm_hash.clone());
+        env.deployer()
+            .update_current_contract_wasm(wasm_hash.clone());
 
         // Emit structured upgrade event for off-chain indexers
         env.events().publish(
@@ -1118,17 +1115,14 @@ impl GrainlifyContract {
         admin.require_auth();
 
         // Store previous version for potential rollback
-        let current_version: u32 = env
-            .storage()
-            .instance()
-            .get(&DataKey::Version)
-            .unwrap_or(1);
+        let current_version: u32 = env.storage().instance().get(&DataKey::Version).unwrap_or(1);
         env.storage()
             .instance()
             .set(&DataKey::PreviousVersion, &current_version);
 
         // Perform WASM upgrade — instance storage is preserved
-        env.deployer().update_current_contract_wasm(new_wasm_hash.clone());
+        env.deployer()
+            .update_current_contract_wasm(new_wasm_hash.clone());
 
         // Emit structured upgrade event for off-chain indexers
         env.events().publish(
