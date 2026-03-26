@@ -415,3 +415,17 @@ pub fn emit_capability_revoked(env: &Env, event: CapabilityRevoked) {
     let topics = (symbol_short!("cap_rev"), event.capability_id);
     env.events().publish(topics, event);
 }
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct EscrowArchived {
+    pub bounty_id: u64,
+    pub archived_at: u64,
+}
+
+pub fn emit_archived(env: &Env, bounty_id: u64, archived_at: u64) {
+    let topics = (symbol_short!("archive"), bounty_id);
+    env.events().publish(topics, EscrowArchived {
+        bounty_id,
+        archived_at,
+    });
+}

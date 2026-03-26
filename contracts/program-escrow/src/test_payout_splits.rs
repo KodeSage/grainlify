@@ -85,6 +85,8 @@ impl SplitTestEnv {
                 initial_liquidity: 0,
                 risk_flags: 0,
                 reference_hash: None,
+                archived: false,
+                archived_at: None,
             };
             self.env
                 .storage()
