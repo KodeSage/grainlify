@@ -664,6 +664,77 @@ pub struct CoreConfigSnapshot {
     pub multisig_signers: Vec<Address>,
 }
 
+/// Comparison result between two [`CoreConfigSnapshot`]s.
+///
+/// Produced by [`GrainlifyContract::compare_snapshots`] to highlight what
+/// changed between two points in time. Every field is `true` when the
+/// corresponding value differs between the two snapshots.
+///
+/// # Usage
+/// Auditors and off-chain tooling can call `compare_snapshots(old_id, new_id)`
+/// to quickly identify configuration drift without fetching and diffing
+/// full snapshot payloads.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SnapshotDiff {
+    /// ID of the earlier ("before") snapshot.
+    pub from_id: u64,
+    /// ID of the later ("after") snapshot.
+    pub to_id: u64,
+    /// `true` when the admin address changed between snapshots.
+    pub admin_changed: bool,
+    /// `true` when the contract version changed between snapshots.
+    pub version_changed: bool,
+    /// `true` when the `previous_version` field changed.
+    pub previous_version_changed: bool,
+    /// `true` when the multisig threshold changed.
+    pub multisig_threshold_changed: bool,
+    /// `true` when the multisig signer set changed.
+    pub multisig_signers_changed: bool,
+    /// Version in the "from" snapshot.
+    pub from_version: u32,
+    /// Version in the "to" snapshot.
+    pub to_version: u32,
+}
+
+/// Aggregated rollback intelligence for recovery drills.
+///
+/// Returned by [`GrainlifyContract::get_rollback_info`] to give operators a
+/// single-call view of everything needed to assess whether a rollback is
+/// possible and what it would entail.
+///
+/// All nested struct fields are flattened to scalar types for Soroban
+/// serialization compatibility.
+///
+/// # Security note
+/// This is a pure view function — no authorization required, no state mutation.
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RollbackInfo {
+    /// Current on-chain contract version.
+    pub current_version: u32,
+    /// Version before the last upgrade (0 if never upgraded).
+    pub previous_version: u32,
+    /// `true` when a `previous_version` exists and a rollback target is known.
+    pub rollback_available: bool,
+    /// `true` when a migration state record exists.
+    pub has_migration: bool,
+    /// Migration source version (0 if no migration).
+    pub migration_from_version: u32,
+    /// Migration target version (0 if no migration).
+    pub migration_to_version: u32,
+    /// Timestamp when the last migration completed (0 if no migration).
+    pub migration_timestamp: u64,
+    /// Number of retained configuration snapshots available for restore.
+    pub snapshot_count: u32,
+    /// `true` when at least one configuration snapshot exists.
+    pub has_snapshot: bool,
+    /// ID of the most recent snapshot (0 if none).
+    pub latest_snapshot_id: u64,
+    /// Version captured in the most recent snapshot (0 if none).
+    pub latest_snapshot_version: u32,
+}
+
 fn contract_is_initialized(env: &Env) -> bool {
     env.storage().instance().has(&DataKey::Version)
         || env.storage().instance().has(&DataKey::Admin)
@@ -2256,6 +2327,7 @@ mod test {
     // Include end-to-end upgrade and migration tests
     pub mod e2e_upgrade_migration_tests;
     pub mod invariant_entrypoints_tests;
+    pub mod state_snapshot_tests;
     pub mod upgrade_rollback_tests;
 
     // WASM for testing (only available after building for wasm32 target)
