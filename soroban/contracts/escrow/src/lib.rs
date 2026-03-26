@@ -981,5 +981,4 @@ pub mod traits {
 
 mod identity_test;
 mod test;
-#[cfg(test)]
 mod test_dispute_resolution;
