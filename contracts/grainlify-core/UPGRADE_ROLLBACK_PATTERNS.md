@@ -264,6 +264,24 @@ The following scenarios are documented and should be tested in integration envir
    // Check error rates, operation counts
    ```
 
+### Monitoring Field Meanings
+
+`health_check()` returns a bounded, read-only status object for operators:
+
+- `is_healthy`: `true` only when the contract's configuration and monitoring invariants hold.
+- `last_operation`: Ledger timestamp of the last tracked operation. Returns `0` before any tracked operation exists.
+- `total_operations`: Total tracked operations, including tracked failures.
+- `contract_version`: Semantic version string derived from the contract's stored version. Returns `0.0.0` before initialization.
+
+`get_analytics()` returns bounded aggregate counters for dashboards:
+
+- `operation_count`: Total tracked operations.
+- `unique_users`: Distinct tracked callers retained in the bounded monitoring index. This count saturates once the tracked-user cap is reached, so it remains storage-safe on-chain.
+- `error_count`: Total tracked failed operations.
+- `error_rate`: Failure rate in basis points where `10000 == 100%` and `250 == 2.5%`.
+
+These views are intentionally panic-free on empty state so monitoring systems can poll a deployed-but-not-yet-initialized contract safely.
+
 3. **Keep Rollback Ready**
    - Maintain previous WASM hash for 24-48 hours
    - Have rollback procedure documented
