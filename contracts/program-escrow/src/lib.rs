@@ -1178,7 +1178,7 @@ impl ProgramEscrowContract {
         }
 
         let mut program_data = Self::initialize_program(
-            env,
+            env.clone(),
             program_id,
             authorized_payout_key,
             token_address,
@@ -1256,6 +1256,7 @@ impl ProgramEscrowContract {
                 reference_hash: item.reference_hash.clone(),
                 archived: false,
                 archived_at: None,
+                status: ProgramStatus::Draft,
             };
             let program_key = DataKey::Program(program_id.clone());
             env.storage().instance().set(&program_key, &program_data);
@@ -2578,7 +2579,7 @@ impl ProgramEscrowContract {
         )
     }
 
-    pub fn create_program_release_schedule_by(
+    pub fn create_release_schedule_by(
         env: Env,
         caller: Address,
         recipient: Address,
