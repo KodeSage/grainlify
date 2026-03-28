@@ -3351,7 +3351,7 @@ impl ProgramEscrowContract {
         Self::release_program_schedule_manual_internal(env, None, schedule_id)
     }
 
-    pub fn release_program_schedule_manual_by(env: Env, caller: Address, schedule_id: u64) {
+    pub fn release_schedule_manual_by(env: Env, caller: Address, schedule_id: u64) {
         Self::release_program_schedule_manual_internal(env, Some(caller), schedule_id)
     }
 
